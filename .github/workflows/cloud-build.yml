@@ -56,8 +56,9 @@ jobs:
             exit 1
           fi
           ROOT=$(dirname "$GRADLEW")
-          echo "GRADLE_ROOT=$ROOT" >> "$GITHUB_ENV"
-          echo "找到 Gradle 根: $ROOT"
+          ABS_ROOT=$(realpath "$ROOT")
+          echo "GRADLE_ROOT=$ABS_ROOT" >> "$GITHUB_ENV"
+          echo "找到 Gradle 根: $ABS_ROOT"
 
       - name: 安装 JDK 17
         uses: actions/setup-java@v4
