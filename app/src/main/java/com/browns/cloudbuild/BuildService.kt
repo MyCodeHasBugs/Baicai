@@ -1,4 +1,4 @@
-package com.browns.cloudbuild
+﻿package com.browns.cloudbuild
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -22,7 +22,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-/** 前台服务承载整条构建链，退出界面也不会中断。 */
+/** 鍓嶅彴鏈嶅姟鎵胯浇鏁存潯鏋勫缓閾撅紝閫€鍑虹晫闈篃涓嶄細涓柇銆?*/
 class BuildService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -39,7 +39,7 @@ class BuildService : Service() {
             ACTION_CANCEL -> {
                 BuildState.cancelRequested = true
                 job?.cancel()
-                BuildState.log("正在取消…")
+                BuildState.log("姝ｅ湪鍙栨秷鈥?)
                 if (job == null) stopSelf()
             }
             ACTION_START -> {
@@ -57,7 +57,7 @@ class BuildService : Service() {
 
     private fun begin(uri: Uri, isDir: Boolean) {
         BuildState.cancelRequested = false
-        startInForeground(buildNotification("准备中…", 0, true))
+        startInForeground(buildNotification("鍑嗗涓€?, 0, true))
 
         val p = App.prefs
         val cfg = BuildOrchestrator.Snapshot(
@@ -80,10 +80,10 @@ class BuildService : Service() {
                 BuildOrchestrator(this@BuildService, cfg).run(uri, isDir)
             } catch (c: CancellationException) {
                 BuildState.cancel()
-                BuildState.log("已取消")
+                BuildState.log("宸插彇娑?)
             } catch (t: Throwable) {
                 BuildState.fail(t.message ?: t.javaClass.simpleName)
-                BuildState.log("失败: ${t.message}")
+                BuildState.log("澶辫触: ${t.message}")
             } finally {
                 notifyJob?.cancel()
                 delayNotifyFinal()
@@ -99,10 +99,10 @@ class BuildService : Service() {
                     Stage.UPLOADING -> "${s.message}  ${Fmt.speed(s.speedBps)}"
                     Stage.DOWNLOADING -> "${s.message}  ${Fmt.speed(s.speedBps)}"
                     Stage.COMPILING, Stage.QUEUED -> s.message
-                    Stage.DONE -> "构建成功，APK 已下载"
-                    Stage.FAILED -> "构建失败"
-                    Stage.CANCELLED -> "已取消"
-                    else -> s.message.ifBlank { "处理中…" }
+                    Stage.DONE -> "鏋勫缓鎴愬姛锛孉PK 宸蹭笅杞?
+                    Stage.FAILED -> "鏋勫缓澶辫触"
+                    Stage.CANCELLED -> "宸插彇娑?
+                    else -> s.message.ifBlank { "澶勭悊涓€? }
                 }
                 val indeterminate = s.indeterminate || s.stage in setOf(Stage.PACKING, Stage.DISPATCHING, Stage.QUEUED, Stage.COMPILING)
                 val notif = buildNotification(text, s.percent, indeterminate, s.stage == Stage.DONE || s.stage == Stage.FAILED || s.stage == Stage.CANCELLED)
@@ -149,8 +149,8 @@ class BuildService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val b = NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("云端编译")
+            .setSmallIcon(R.drawable.ic_stat_build)
+            .setContentTitle("浜戠缂栬瘧")
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(!finished)
@@ -158,7 +158,7 @@ class BuildService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
         if (!finished) {
             b.setProgress(100, percent.coerceIn(0, 100), indeterminate)
-            b.addAction(0, "取消", cancel)
+            b.addAction(0, "鍙栨秷", cancel)
         }
         return b.build()
     }
@@ -166,8 +166,8 @@ class BuildService : Service() {
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(
-                CHANNEL, "云端构建", NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "上传、云端编译、下载 APK 的进度" }
+                CHANNEL, "浜戠鏋勫缓", NotificationManager.IMPORTANCE_LOW
+            ).apply { description = "涓婁紶銆佷簯绔紪璇戙€佷笅杞?APK 鐨勮繘搴? }
             notificationManager().createNotificationChannel(ch)
         }
     }
