@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.CloudBuild" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/brand</item>
@@ -16,18 +16,18 @@
         <item name="contentPadding">16dp</item>
     </style>
 
-    <style name="Text.Section">
+    <style name="Text.Section" parent="">
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
 
-    <style name="Text.Hint">
+    <style name="Text.Hint" parent="">
         <item name="android:textSize">13sp</item>
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 
-    <style name="Text.Mono">
+    <style name="Text.Mono" parent="">
         <item name="android:fontFamily">monospace</item>
         <item name="android:textSize">11sp</item>
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
