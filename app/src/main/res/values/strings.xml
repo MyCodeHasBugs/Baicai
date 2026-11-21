@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">云端编译</string>
+    <string name="app_subtitle">GitHub Actions 一键出 APK</string>
+    <string name="pick_zip">选 ZIP 工程</string>
+    <string name="pick_dir">选工程目录</string>
+    <string name="build">一键上传并编译</string>
+    <string name="cancel">取消</string>
+    <string name="install">安装 APK</string>
+    <string name="share">导出 / 分享</string>
+    <string name="settings">设置</string>
+    <string name="no_project">尚未选择工程</string>
+    <string name="repo_label">仓库</string>
+    <string name="variant_label">构建类型</string>
+    <string name="accelerate">镜像加速</string>
+    <string name="history">构建历史</string>
+</resources>

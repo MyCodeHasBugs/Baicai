@@ -1,0 +1,140 @@
+name: cloud-build
+
+# 由手机端 App 触发：上传工程分片 → 这里合并解压 → Gradle 编译 → 发布 APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '输入 release tag（App 上传的分片所在 tag）'
+        required: true
+      apk_tag:
+        description: '产物 release tag'
+        required: true
+      variant:
+        description: 'debug 或 release'
+        required: false
+        default: 'debug'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cloud-build-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 云端构建 APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: 下载工程分片
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/in
+          gh release download "$TAG" --dir /tmp/in --pattern 'project.zip.part*' --repo "$GITHUB_REPOSITORY"
+          cat /tmp/in/project.zip.part* > /tmp/in/project.zip
+          ls -lh /tmp/in/project.zip
+          echo "分片数: $(ls /tmp/in/project.zip.part* | wc -l)"
+
+      - name: 解压工程
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/src
+          cd /tmp/src
+          unzip -q /tmp/in/project.zip
+          echo "---- 顶层内容 ----"
+          ls -la | head -40
+          GRADLEW=$(find . -maxdepth 4 -name gradlew -type f | head -1 || true)
+          if [ -z "$GRADLEW" ]; then
+            echo "::error::上传的工程里找不到 gradlew（需要标准 Gradle 工程根目录）"
+            find . -maxdepth 3 -type f | head -50
+            exit 1
+          fi
+          ROOT=$(dirname "$GRADLEW")
+          echo "GRADLE_ROOT=$ROOT" >> "$GITHUB_ENV"
+          echo "找到 Gradle 根: $ROOT"
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: 定位 Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          if [ ! -d "$SDK" ]; then
+            echo "::error::runner 上没有 Android SDK（ANDROID_HOME=$SDK）"
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "SDK: $SDK"
+
+      - name: Gradle 编译
+        env:
+          VARIANT: ${{ inputs.variant }}
+        run: |
+          set -euo pipefail
+          cd "$GRADLE_ROOT"
+          chmod +x gradlew
+          if [ "$VARIANT" = "release" ]; then
+            TASK=assembleRelease
+          else
+            TASK=assembleDebug
+          fi
+          echo "执行 ./gradlew $TASK"
+          ./gradlew "$TASK" --stacktrace --no-daemon
+
+      - name: 收集 APK
+        run: |
+          set -euo pipefail
+          cd "$GRADLE_ROOT"
+          APK=$(find . -path '*/build/outputs/apk/*/*.apk' -type f | head -1 || true)
+          if [ -z "$APK" ]; then
+            echo "::error::没有找到 APK 产物"
+            find . -name '*.apk' | head -20
+            exit 1
+          fi
+          mkdir -p /tmp/out
+          cp "$APK" "/tmp/out/app-${{ inputs.variant }}.apk"
+          ls -lh /tmp/out/
+          sha256sum "/tmp/out/app-${{ inputs.variant }}.apk" | tee /tmp/out/apk-sha256.txt
+
+      - name: 发布 APK 到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APK_TAG: ${{ inputs.apk_tag }}
+          VARIANT: ${{ inputs.variant }}
+        run: |
+          set -euo pipefail
+          gh release create "$APK_TAG" \
+            "/tmp/out/app-$VARIANT.apk" \
+            "/tmp/out/apk-sha256.txt" \
+            --title "APK $APK_TAG" \
+            --notes "由 cloud-build workflow 自动产出。variant=$VARIANT，run=$GITHUB_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: 上传工作流产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-${{ github.run_number }}
+          path: /tmp/out
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: 清理输入 release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: gh release delete "$TAG" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
