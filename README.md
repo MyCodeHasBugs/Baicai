@@ -2,6 +2,17 @@
 
 手机上的独立 App：选一个 Gradle 工程 → 自动打包分片并发上传 → 触发 GitHub Actions 云端编译 → 镜像测速 + 多线程下载 APK → 直接安装。
 
+## 直接安装
+
+- Release：https://github.com/MyCodeHasBugs/Baicai/releases/tag/apk-final-20261122-001758
+- 本地已构建版本：`E:\AI\safe-code\android\CloudBuild-debug.apk`（6.79 MB，SHA256 `11c5f34c0daac022f2351dc8a028be0647150ddff6a5e2bb70554e5a05238ae7`）
+- 首次打开后进入「设置」，填 Owner、仓库名、Token，即可使用
+
+已在 Baicai 仓库完成自举验证：
+- 单分片（83 KB 工程）上传 → 云端编译 → 发布 APK → 镜像下载：成功
+- 多分片（25 MB 工程，切 2 片）上传合并 → 云端编译：成功（上传 20.7 秒）
+- 镜像实测：`ghfast.top` / `gh-proxy.com` / `ghproxy.net` 均支持 Range（206）
+
 ## 功能
 
 - **一键构建**：ZIP 工程或目录工程，点一次走完全程

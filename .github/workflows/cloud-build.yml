@@ -106,6 +106,22 @@ jobs:
             exit 1
           fi
           mkdir -p /tmp/out
+          # 未签名的 release 包装不上，这里用一次性 debug keystore 补签，保证产物可安装
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -1)
+          APKSIGNER="$BT/apksigner"
+          ZIPALIGN="$BT/zipalign"
+          if [ -x "$APKSIGNER" ] && ! "$APKSIGNER" verify "$APK" >/dev/null 2>&1; then
+            echo "APK 未签名，使用 debug keystore 补签"
+            KS=/tmp/debug.keystore
+            keytool -genkeypair -keystore "$KS" -alias androiddebugkey -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
+            "$ZIPALIGN" -f -p 4 "$APK" /tmp/aligned.apk
+            "$APKSIGNER" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
+              --ks-key-alias androiddebugkey --v1-signing-enabled true --v2-signing-enabled true \
+              --out /tmp/signed.apk /tmp/aligned.apk
+            APK=/tmp/signed.apk
+          fi
           cp "$APK" "/tmp/out/app-${{ inputs.variant }}.apk"
           ls -lh /tmp/out/
           sha256sum "/tmp/out/app-${{ inputs.variant }}.apk" | tee /tmp/out/apk-sha256.txt
