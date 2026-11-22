@@ -161,7 +161,7 @@ class BuildOrchestrator(
                 if (elapsed > 90L * 60 * 1000) {
                     throw IllegalStateException("等待超时（90 分钟），请到 Actions 页面查看：${run.htmlUrl}")
                 }
-                delay(4000)
+                delay(2000)
                 run = client.run(runId)
             }
             BuildState.log("云端构建成功")

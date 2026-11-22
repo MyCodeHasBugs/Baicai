@@ -65,11 +65,11 @@ class Prefs private constructor(ctx: Context) {
         set(v) = sp.edit().putString("mirrors", v).apply()
 
     var uploadConcurrency: Int
-        get() = sp.getInt("uploadConcurrency", 4).coerceIn(1, 8)
+        get() = sp.getInt("uploadConcurrency", 6).coerceIn(1, 8)
         set(v) = sp.edit().putInt("uploadConcurrency", v.coerceIn(1, 8)).apply()
 
     var downloadThreads: Int
-        get() = sp.getInt("downloadThreads", 6).coerceIn(1, 16)
+        get() = sp.getInt("downloadThreads", 8).coerceIn(1, 16)
         set(v) = sp.edit().putInt("downloadThreads", v.coerceIn(1, 16)).apply()
 
     var shardMb: Int

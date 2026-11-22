@@ -63,11 +63,15 @@ jobs:
             echo "MODE=gradle" >> "$GITHUB_ENV"
             echo "GRADLE_ROOT=$(realpath "$ROOT")" >> "$GITHUB_ENV"
             echo "使用 gradlew 构建: $(realpath "$ROOT")"
+            DIST_PROP=$(find "$(realpath "$ROOT")" -maxdepth 4 -name gradle-wrapper.properties -type f | head -1 || true)
+            [ -n "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
           elif [ -n "$SETTINGS" ]; then
             ROOT=$(dirname "$SETTINGS")
             echo "MODE=gradle" >> "$GITHUB_ENV"
             echo "GRADLE_ROOT=$(realpath "$ROOT")" >> "$GITHUB_ENV"
             echo "没有 gradlew，但有 settings.gradle，使用云端 Gradle 构建: $(realpath "$ROOT")"
+            DIST_PROP=$(find "$(realpath "$ROOT")" -maxdepth 4 -name gradle-wrapper.properties -type f | head -1 || true)
+            [ -n "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
           else
             echo "MODE=bare" >> "$GITHUB_ENV"
             echo "没有 Gradle 工程，改走裸源码编译（aapt2 + javac + d8 + clang）"
@@ -83,6 +87,7 @@ jobs:
           java-version: '17'
 
       - name: 配置 Gradle 缓存
+        if: env.MODE == 'gradle'
         uses: gradle/actions/setup-gradle@v3
 
       - name: 定位 Android SDK
@@ -95,6 +100,13 @@ jobs:
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
           echo "SDK: $SDK"
+
+      - name: 缓存 Gradle 发行版
+        if: env.MODE == 'gradle' && env.DIST_KEY != ''
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/gradle-dist
+          key: gradle-dist-${{ env.DIST_KEY }}
 
       - name: Gradle 编译
         if: env.MODE == 'gradle'
@@ -113,17 +125,22 @@ jobs:
             echo "执行 ./gradlew $TASK"
             ./gradlew "$TASK" --stacktrace --no-daemon
           else
-            # 工程没带 gradlew：按 gradle-wrapper.properties 下载对应版本
-            PROP=gradle/wrapper/gradle-wrapper.properties
-            if [ -f "$PROP" ]; then
-              URL=$(sed -n 's/^distributionUrl=//p' "$PROP" | sed 's/\\:/:/g')
-              echo "下载工程指定的 Gradle: $URL"
-              mkdir -p /opt/gradle-dist
-              curl -fsSL "$URL" -o /tmp/gradle.zip
-              unzip -q /tmp/gradle.zip -d /opt/gradle-dist
-              GBIN=$(find /opt/gradle-dist -type f -name gradle | head -1)
+            # 工程没带 gradlew：优先用缓存，没有再按 gradle-wrapper.properties 下载
+            GBIN=$(find /home/runner/gradle-dist -type f -name gradle 2>/dev/null | head -1 || true)
+            if [ -z "$GBIN" ]; then
+              PROP=gradle/wrapper/gradle-wrapper.properties
+              if [ -f "$PROP" ]; then
+                URL=$(sed -n 's/^distributionUrl=//p' "$PROP" | sed 's/\\:/:/g')
+                echo "下载工程指定的 Gradle: $URL"
+                mkdir -p /home/runner/gradle-dist
+                curl -fsSL "$URL" -o /tmp/gradle.zip
+                unzip -q /tmp/gradle.zip -d /home/runner/gradle-dist
+                GBIN=$(find /home/runner/gradle-dist -type f -name gradle | head -1)
+              else
+                GBIN=$(command -v gradle || true)
+              fi
             else
-              GBIN=$(command -v gradle || true)
+              echo "使用缓存的 Gradle: $GBIN"
             fi
             [ -n "$GBIN" ] || { echo "::error::找不到 Gradle，无法构建"; exit 1; }
             chmod +x "$GBIN"

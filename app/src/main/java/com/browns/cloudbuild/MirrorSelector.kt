@@ -24,14 +24,14 @@ class MirrorSelector(mirrorLines: String) {
         .ifEmpty { listOf("") }
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 
     fun urlFor(prefix: String, original: String): String = if (prefix.isEmpty()) original else prefix + original
 
-    suspend fun rank(originalUrl: String, sampleBytes: Int = 256 * 1024): List<Candidate> = coroutineScope {
+    suspend fun rank(originalUrl: String, sampleBytes: Int = 128 * 1024): List<Candidate> = coroutineScope {
         prefixes.map { p ->
             async(Dispatchers.IO) {
                 val sw = System.currentTimeMillis()
