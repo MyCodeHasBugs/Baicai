@@ -90,7 +90,7 @@ def main() -> int:
 project({name} C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.c" "*.cpp" "*.cc")
+file(GLOB_RECURSE SOURCES "*.c" "*.cpp" "*.cc")
 add_library({name} SHARED ${{SOURCES}})
 target_link_libraries({name} log android)
 """
