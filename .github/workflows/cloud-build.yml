@@ -161,6 +161,13 @@ jobs:
             fi
           fi
 
+      - name: 补全基础资源
+        if: env.MODE == 'gradle'
+        run: |
+          set -euo pipefail
+          cd "$GRADLE_ROOT"
+          python3 "$GITHUB_WORKSPACE/toolkit/ensure_app_name.py" "$GRADLE_ROOT" || true
+
       - name: Gradle 编译
         if: env.MODE == 'gradle'
         env:
