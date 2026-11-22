@@ -13,6 +13,31 @@
 - 多分片（25 MB 工程，切 2 片）上传合并 → 云端编译：成功（上传 20.7 秒）
 - 镜像实测：`ghfast.top` / `gh-proxy.com` / `ghproxy.net` 均支持 Range（206）
 
+## 编译能力
+
+### 模式一：标准 Gradle 工程（有 `gradlew`）
+
+| 类型 | 支持 |
+|---|---|
+| Java / Kotlin | ✅ Gradle 全流程 |
+| XML 资源 | ✅ AAPT2 → `resources.arsc` + `R.java` |
+| C / C++ | ✅ 工程自带 CMake/ndkBuild 时可用（runner 自带 NDK） |
+| DEX | ✅ D8/R8 自动生成 |
+| 产物 | debug / release APK；未签名会自动补 debug 签名 |
+
+### 模式二：裸源码工程（没有 `gradlew`）
+
+自动找 `AndroidManifest.xml`、`res/`、`java/`、`cpp|jni/`，直接用 runner 自带 build-tools + NDK 编：
+
+- XML → `aapt2` → `resources.arsc` + `R.java`
+- Java → `javac` → `d8` → `classes.dex`
+- C/C++ → `clang` → `lib/arm64-v8a/lib*.so`（C++ 自动带 `libc++_shared.so`）
+- 最后 `zipalign` + `apksigner` 出可安装 APK
+
+实测产物包含：`AndroidManifest.xml`、`resources.arsc`、`classes.dex`、`lib/arm64-v8a/libnative.so`，v2 签名有效。
+
+局限：裸源码模式固定 `arm64-v8a` / minSdk 21，不支持第三方 aar/jar 依赖；需要依赖请用 Gradle 模式。
+
 ## 功能
 
 - **一键构建**：ZIP 工程或目录工程，点一次走完全程

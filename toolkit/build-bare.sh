@@ -96,6 +96,7 @@ fi
 LIBROOT="$WORK/libroot"
 mkdir -p "$LIBROOT/lib/arm64-v8a"
 SO_COUNT=0
+HAS_CXX=0
 if [ "${#CPP_DIRS[@]}" -gt 0 ]; then
   NDK=$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1 || true)
   if [ -n "$NDK" ]; then
@@ -108,7 +109,7 @@ if [ "${#CPP_DIRS[@]}" -gt 0 ]; then
       NAME=$(basename "$dir")
       [ "$NAME" = "cpp" ] && NAME="native"
       CXX_FLAGS=()
-      case " ${CSRC[*]} " in *.cpp*|*.cc*) CXX_FLAGS=(-std=c++17 -lc++_shared) ;; esac
+      case " ${CSRC[*]} " in *.cpp*|*.cc*) CXX_FLAGS=(-std=c++17 -lc++_shared); HAS_CXX=1 ;; esac
       "$CLANG" --target=aarch64-linux-android21 --sysroot="$SYSROOT" \
         -shared -fPIC -O2 -DANDROID -I"$SYSROOT/usr/include" \
         -Wl,-soname,"lib$NAME.so" "${CXX_FLAGS[@]}" \
@@ -117,7 +118,7 @@ if [ "${#CPP_DIRS[@]}" -gt 0 ]; then
       echo "  + lib$NAME.so (${#CSRC[@]} 个源文件)"
     done
     CXXSH=$(find "$SYSROOT/usr/lib/aarch64-linux-android" -name 'libc++_shared.so' 2>/dev/null | head -1 || true)
-    if [ -n "$CXXSH" ] && ls "$LIBROOT/lib/arm64-v8a"/*.so >/dev/null 2>&1; then
+    if [ "$HAS_CXX" -eq 1 ] && [ -n "$CXXSH" ] && ls "$LIBROOT/lib/arm64-v8a"/*.so >/dev/null 2>&1; then
       cp "$CXXSH" "$LIBROOT/lib/arm64-v8a/libc++_shared.so"
     fi
   else
