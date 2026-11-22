@@ -65,6 +65,8 @@ jobs:
             echo "使用 gradlew 构建: $(realpath "$ROOT")"
             DIST_PROP=$(find "$(realpath "$ROOT")" -maxdepth 4 -name gradle-wrapper.properties -type f | head -1 || true)
             [ -n "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+            DEPS_KEY=$(find "$(realpath "$ROOT")" -maxdepth 3 \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' \) -type f -exec sha1sum {} \; | sort | sha1sum | cut -d' ' -f1)
+            echo "DEPS_KEY=$DEPS_KEY" >> "$GITHUB_ENV"
           elif [ -n "$SETTINGS" ]; then
             ROOT=$(dirname "$SETTINGS")
             echo "MODE=gradle" >> "$GITHUB_ENV"
@@ -72,6 +74,8 @@ jobs:
             echo "没有 gradlew，但有 settings.gradle，使用云端 Gradle 构建: $(realpath "$ROOT")"
             DIST_PROP=$(find "$(realpath "$ROOT")" -maxdepth 4 -name gradle-wrapper.properties -type f | head -1 || true)
             [ -n "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+            DEPS_KEY=$(find "$(realpath "$ROOT")" -maxdepth 3 \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' \) -type f -exec sha1sum {} \; | sort | sha1sum | cut -d' ' -f1)
+            echo "DEPS_KEY=$DEPS_KEY" >> "$GITHUB_ENV"
           else
             echo "MODE=bare" >> "$GITHUB_ENV"
             echo "没有 Gradle 工程，改走裸源码编译（aapt2 + javac + d8 + clang）"
@@ -107,6 +111,17 @@ jobs:
         with:
           path: /home/runner/gradle-dist
           key: gradle-dist-${{ env.DIST_KEY }}
+
+      - name: 缓存 Gradle 依赖
+        if: env.MODE == 'gradle' && env.DEPS_KEY != ''
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-deps-${{ env.DEPS_KEY }}
+          restore-keys: |
+            gradle-deps-
 
       - name: Gradle 编译
         if: env.MODE == 'gradle'
