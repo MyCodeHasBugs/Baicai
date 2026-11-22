@@ -12,59 +12,17 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="仓库与 Token"
+            android:text="加速镜像"
             android:textSize="15sp"
             android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/etOwner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:hint="Owner，例如 MyCodeHasBugs"
-            android:inputType="text"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/etRepo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="仓库名，例如 Baicai"
-            android:inputType="text"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/etBranch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="分支（默认 main）"
-            android:inputType="text"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/etWorkflow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="workflow 文件名（cloud-build.yml）"
-            android:inputType="text"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/etToken"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="GitHub Token（Contents + Actions 读写）"
-            android:importantForAutofill="no"
-            android:inputType="textPassword"
-            android:singleLine="true" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="加速镜像（每行一个，可留空走直连）"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="4dp"
+            android:text="每行一个镜像前缀，留空则直连。App 会并发测速自动选最快的，失败自动切换。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
 
         <EditText
             android:id="@+id/etMirrors"
@@ -74,7 +32,7 @@
             android:gravity="top"
             android:hint="https://ghfast.top/"
             android:inputType="textMultiLine|textUri"
-            android:minLines="3" />
+            android:minLines="4" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -108,8 +66,8 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="Token 只保存在本机加密存储里，不会写入日志。建议使用只授权单个仓库的细粒度 Token。"
+            android:layout_marginTop="16dp"
+            android:text="云端编译服务已内置，无需填写账号或 Token。"
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
     </LinearLayout>

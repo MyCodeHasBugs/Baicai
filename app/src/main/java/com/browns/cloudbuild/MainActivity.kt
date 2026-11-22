@@ -34,7 +34,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tvProject: TextView
     private lateinit var tvProjectMeta: TextView
-    private lateinit var tvRepo: TextView
     private lateinit var tvStep: TextView
     private lateinit var tvSpeed: TextView
     private lateinit var tvLog: TextView
@@ -96,7 +95,6 @@ class MainActivity : AppCompatActivity() {
     private fun bindViews() {
         tvProject = findViewById(R.id.tvProject)
         tvProjectMeta = findViewById(R.id.tvProjectMeta)
-        tvRepo = findViewById(R.id.tvRepo)
         tvStep = findViewById(R.id.tvStep)
         tvSpeed = findViewById(R.id.tvSpeed)
         tvLog = findViewById(R.id.tvLog)
@@ -111,7 +109,6 @@ class MainActivity : AppCompatActivity() {
         historyContainer = findViewById(R.id.historyContainer)
 
         tvLog.movementMethod = ScrollingMovementMethod()
-        tvRepo.text = App.prefs.repoFull()
     }
 
     private fun bindActions() {
@@ -122,7 +119,6 @@ class MainActivity : AppCompatActivity() {
             pickDir.launch(null)
         }
         findViewById<ImageButton>(R.id.btnSettings).setOnClickListener { showSettings() }
-        findViewById<MaterialButton>(R.id.btnChangeRepo).setOnClickListener { showSettings() }
         findViewById<MaterialButton>(R.id.btnClearHistory).setOnClickListener { confirmClearHistory() }
 
         findViewById<MaterialSwitch>(R.id.swAccelerate).apply {
@@ -196,8 +192,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (App.prefs.token.isBlank()) {
-            Toast.makeText(this, "先在设置里填 GitHub Token", Toast.LENGTH_LONG).show()
-            showSettings()
+            Toast.makeText(this, "此安装包未内置云端密钥，请联系提供者重新构建", Toast.LENGTH_LONG).show()
             return
         }
         if (BuildState.state.value.stage !in setOf(
@@ -288,41 +283,24 @@ class MainActivity : AppCompatActivity() {
     private fun showSettings() {
         val view = layoutInflater.inflate(R.layout.dialog_settings, null)
         val p = App.prefs
-        val etOwner = view.findViewById<EditText>(R.id.etOwner)
-        val etRepo = view.findViewById<EditText>(R.id.etRepo)
-        val etBranch = view.findViewById<EditText>(R.id.etBranch)
-        val etWorkflow = view.findViewById<EditText>(R.id.etWorkflow)
-        val etToken = view.findViewById<EditText>(R.id.etToken)
         val etMirrors = view.findViewById<EditText>(R.id.etMirrors)
         val etUpload = view.findViewById<EditText>(R.id.etUploadConc)
         val etThreads = view.findViewById<EditText>(R.id.etDownloadThreads)
         val etShard = view.findViewById<EditText>(R.id.etShardMb)
 
-        etOwner.setText(p.owner)
-        etRepo.setText(p.repo)
-        etBranch.setText(p.branch)
-        etWorkflow.setText(p.workflow)
-        etToken.hint = if (p.token.isBlank()) "GitHub Token（Contents + Actions 读写）"
-        else "已保存 Token，留空不修改"
         etMirrors.setText(p.mirrors)
         etUpload.setText(p.uploadConcurrency.toString())
         etThreads.setText(p.downloadThreads.toString())
         etShard.setText(p.shardMb.toString())
 
         AlertDialog.Builder(this)
-            .setTitle("设置")
+            .setTitle("高级设置")
             .setView(view)
             .setPositiveButton("保存") { _, _ ->
-                if (etOwner.text.isNotBlank()) p.owner = etOwner.text.toString()
-                if (etRepo.text.isNotBlank()) p.repo = etRepo.text.toString()
-                if (etBranch.text.isNotBlank()) p.branch = etBranch.text.toString()
-                if (etWorkflow.text.isNotBlank()) p.workflow = etWorkflow.text.toString()
-                if (etToken.text.isNotBlank()) p.token = etToken.text.toString()
                 p.mirrors = etMirrors.text.toString()
                 p.uploadConcurrency = etUpload.text.toString().toIntOrNull() ?: p.uploadConcurrency
                 p.downloadThreads = etThreads.text.toString().toIntOrNull() ?: p.downloadThreads
                 p.shardMb = etShard.text.toString().toIntOrNull() ?: p.shardMb
-                tvRepo.text = p.repoFull()
                 Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("取消", null)

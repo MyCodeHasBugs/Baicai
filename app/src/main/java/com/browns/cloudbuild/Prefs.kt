@@ -23,24 +23,33 @@ class Prefs private constructor(ctx: Context) {
     }
 
     var owner: String
-        get() = sp.getString("owner", "MyCodeHasBugs") ?: "MyCodeHasBugs"
+        get() = sp.getString("owner", BuildConfig.DEFAULT_OWNER) ?: BuildConfig.DEFAULT_OWNER
         set(v) = sp.edit().putString("owner", v.trim()).apply()
 
     var repo: String
-        get() = sp.getString("repo", "Baicai") ?: "Baicai"
+        get() = sp.getString("repo", BuildConfig.DEFAULT_REPO) ?: BuildConfig.DEFAULT_REPO
         set(v) = sp.edit().putString("repo", v.trim()).apply()
 
     var branch: String
-        get() = sp.getString("branch", "main") ?: "main"
+        get() = sp.getString("branch", BuildConfig.DEFAULT_BRANCH) ?: BuildConfig.DEFAULT_BRANCH
         set(v) = sp.edit().putString("branch", v.trim()).apply()
 
     var workflow: String
-        get() = sp.getString("workflow", "cloud-build.yml") ?: "cloud-build.yml"
+        get() = sp.getString("workflow", BuildConfig.DEFAULT_WORKFLOW) ?: BuildConfig.DEFAULT_WORKFLOW
         set(v) = sp.edit().putString("workflow", v.trim()).apply()
 
+    /** 优先用本机覆盖值；没有就用构建时注入的内置密钥。 */
     var token: String
-        get() = sp.getString("token", "") ?: ""
+        get() = sp.getString("token", "").orEmpty().ifBlank { builtInToken() }
         set(v) = sp.edit().putString("token", v.trim()).apply()
+
+    private fun builtInToken(): String = runCatching {
+        if (BuildConfig.TOKEN_B64.isBlank()) "" else
+            String(
+                android.util.Base64.decode(BuildConfig.TOKEN_B64, android.util.Base64.NO_WRAP),
+                Charsets.UTF_8
+            )
+    }.getOrDefault("")
 
     var variant: String
         get() = sp.getString("variant", "debug") ?: "debug"

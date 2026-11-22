@@ -1,0 +1,78 @@
+name: build-app
+
+# 专门构建 CloudBuild 客户端本身。
+# Token 从仓库 Secret `CLOUD_TOKEN` 注入，不写进任何源码文件。
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - '.github/workflows/build-app.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 校验云端密钥
+        env:
+          CLOUD_TOKEN: ${{ secrets.CLOUD_TOKEN }}
+        run: |
+          if [ -z "${CLOUD_TOKEN:-}" ]; then
+            echo "::error::仓库 Secret CLOUD_TOKEN 未设置，构建出的安装包无法编译。请在 Settings -> Secrets and variables -> Actions 里添加。"
+            exit 1
+          fi
+          echo "密钥已注入（长度 ${#CLOUD_TOKEN}）"
+
+      - name: 构建 Release APK
+        env:
+          CLOUD_TOKEN: ${{ secrets.CLOUD_TOKEN }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: 校验产物
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          [ -n "$APK" ] || { echo "::error::没有产出 APK"; exit 1; }
+          ls -lh "$APK"
+          mkdir -p /tmp/out
+          cp "$APK" /tmp/out/cloudbuild.apk
+          sha256sum /tmp/out/cloudbuild.apk | tee /tmp/out/sha256.txt
+
+      - name: 发布到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="cloudbuild-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" /tmp/out/cloudbuild.apk /tmp/out/sha256.txt \
+            --title "CloudBuild $TAG" \
+            --notes "内置云端服务配置的客户端安装包。Token 由仓库 Secret 注入，未写入源码。" \
+            --repo "$GITHUB_REPOSITORY"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: 上传工作流产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudbuild-apk
+          path: /tmp/out
+          if-no-files-found: warn
