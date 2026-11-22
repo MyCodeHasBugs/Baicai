@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """保证工程声明了 CMake 时，它能真的构建出 .so。
 
-处理优先级：
-1. 工程里已有 CMakeLists.txt（任意深度）→ 确保它位于 build.gradle 配置的 path；
-2. 没有 CMakeLists，但有 .c/.cpp/.cc 源码（任意深度）→ 在配置的 path 生成一个；
-3. 两者都没有 → 退出码 1，调用方再回退到禁用 externalNativeBuild。
+处理：
+1. 工程里已有 CMakeLists.txt（任意深度）→ 若与 build.gradle 配置的 path 不一致，
+   直接改 build.gradle 的 path 指向真实位置（不搬家，避免源码丢失）；
+2. 没有 CMakeLists，但有 .c/.cpp/.cc（任意深度）→ 在配置路径生成；
+3. 无论哪种，都给 CMakeLists 加上 CMAKE_SUPPRESS_REGENERATION，
+   避免 ZIP 解压后 mtime 一致导致 ninja "build.ninja still dirty after 100 tries"。
 
-退出码：0 = native 构建可用；1 = 无 CMakeLists 且无源码。
+退出码：0 = native 构建可用；1 = 既无 CMakeLists 也无源码。
 """
 import os
 import re
@@ -20,6 +22,11 @@ def read(path):
             return f.read()
     except OSError:
         return ""
+
+
+def write(path, s):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(s)
 
 
 def configured_cmake_path(root):
@@ -77,11 +84,21 @@ def update_gradle_path(app, actual_cmake):
             s,
         )
         if new != s:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(new)
+            write(path, new)
             print("updated cmake path", path, "->", rel)
             return True
     return False
+
+
+def suppress_regen(cmake_path):
+    s = read(cmake_path)
+    if not s or "CMAKE_SUPPRESS_REGENERATION" in s:
+        return
+    if not s.endswith("\n"):
+        s += "\n"
+    s += "set(CMAKE_SUPPRESS_REGENERATION TRUE)\n"
+    write(cmake_path, s)
+    print("suppressed regeneration", cmake_path)
 
 
 def main() -> int:
@@ -104,8 +121,8 @@ def main() -> int:
                     elif os.path.isdir(s):
                         shutil.copytree(s, d, dirs_exist_ok=True)
                 print("copied dir", src_dir, "->", os.path.dirname(target))
-            return 0
-        print("found", existing)
+                existing = target
+        suppress_regen(existing)
         return 0
 
     src = find_source_dir(root)
@@ -123,10 +140,10 @@ set(CMAKE_CXX_STANDARD 17)
 file(GLOB_RECURSE SOURCES "*.c" "*.cpp" "*.cc")
 add_library({name} SHARED ${{SOURCES}})
 target_link_libraries({name} log android)
+set(CMAKE_SUPPRESS_REGENERATION TRUE)
 """
     os.makedirs(os.path.dirname(target), exist_ok=True)
-    with open(target, "w", encoding="utf-8") as f:
-        f.write(content)
+    write(target, content)
     print("generated", target, "library", name)
     return 0
 
