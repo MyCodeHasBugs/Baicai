@@ -53,6 +53,8 @@
 1. 仓库 Settings → Secrets and variables → Actions → **New repository secret**
    - Name：`CLOUD_TOKEN`
    - Value：只授权该仓库的细粒度 Token（Contents / Actions / Workflows 读写）
+   - Name：`SIGNING_KEY_B64`
+   - Value：固定签名 keystore 的 Base64（保证后续版本能覆盖安装；密码 `cloudbuild`，别名 `cloudbuild`）
 2. Actions → **build-app** → Run workflow
 3. 构建完成后在 Release 里下载 `cloudbuild.apk`，直接安装
 
