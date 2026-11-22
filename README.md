@@ -48,16 +48,23 @@
 - **历史记录**：最近 30 次构建，点击直接安装
 - **镜像可配**：设置里可增删镜像前缀，留空则直连
 
-## 服务端配置
+## 构建客户端（只做一次）
 
-1. 在 GitHub 建一个公开空仓库（如 `Baicai`）
-2. 把本工程推到该仓库的 `main`
-3. 仓库 Settings → Actions → General → Workflow permissions 选 **Read and write**
-4. 生成细粒度 Token：Repository access 只选该仓库，权限给
-   - **Contents: Read and write**（Release / 资产上传下载）
-   - **Actions: Read and write**（触发和查询 workflow）
-   - **Workflows: Read and write**（推送 workflow 文件时需要）
-5. 手机 App 设置里填 Owner、仓库名、Token
+1. 仓库 Settings → Secrets and variables → Actions → **New repository secret**
+   - Name：`CLOUD_TOKEN`
+   - Value：只授权该仓库的细粒度 Token（Contents / Actions / Workflows 读写）
+2. Actions → **build-app** → Run workflow
+3. 构建完成后在 Release 里下载 `cloudbuild.apk`，直接安装
+
+App 内不提供仓库/Token 输入，安装后选 ZIP 即可编译。
+
+## 安全说明
+
+- Token 不写入仓库源码，只在构建时由 Secret 注入。
+- APK 内的 Token 仍然可以被反编译提取（任何客户端都无法避免），所以这个 Token 必须：
+  - 只授权 `Baicai` 这一个仓库
+  - 设置过期时间
+  - 泄露、换人、或不再使用时立即吊销重建
 
 ## 目录
 
