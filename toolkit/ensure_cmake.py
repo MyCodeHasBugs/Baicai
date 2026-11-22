@@ -64,18 +64,48 @@ def find_lib_name(root):
     return "native-lib"
 
 
+def update_gradle_path(app, actual_cmake):
+    rel = os.path.relpath(actual_cmake, app).replace(os.sep, "/")
+    for name in ("build.gradle", "build.gradle.kts"):
+        path = os.path.join(app, name)
+        s = read(path)
+        if not s:
+            continue
+        new = re.sub(
+            r'(path\s*=?\s*(?:file\()?\s*[\"\'])[^\"\']+CMakeLists\.txt([\"\'])',
+            lambda m: m.group(1) + rel + m.group(2),
+            s,
+        )
+        if new != s:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(new)
+            print("updated cmake path", path, "->", rel)
+            return True
+    return False
+
+
 def main() -> int:
     root = sys.argv[1] if len(sys.argv) > 1 else "."
     target = configured_cmake_path(root)
+    app = os.path.join(root, "app")
 
     existing = find_existing_cmake(root)
     if existing:
         if os.path.abspath(existing) != os.path.abspath(target):
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            shutil.copyfile(existing, target)
-            print("copied", existing, "->", target)
-        else:
-            print("found", existing)
+            if not update_gradle_path(app, existing):
+                # 改不了 build.gradle 才退回复制，且把同目录源码一起带过去
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                src_dir = os.path.dirname(existing)
+                for item in os.listdir(src_dir):
+                    s = os.path.join(src_dir, item)
+                    d = os.path.join(os.path.dirname(target), item)
+                    if os.path.isfile(s):
+                        shutil.copyfile(s, d)
+                    elif os.path.isdir(s):
+                        shutil.copytree(s, d, dirs_exist_ok=True)
+                print("copied dir", src_dir, "->", os.path.dirname(target))
+            return 0
+        print("found", existing)
         return 0
 
     src = find_source_dir(root)
