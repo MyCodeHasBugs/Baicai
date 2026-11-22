@@ -248,13 +248,12 @@ class MainActivity : AppCompatActivity() {
                 progress.isIndeterminate = false
                 progress.progress = 100
                 tvStep.text = "构建成功"
-                tvSpeed.text = "总耗时见 Actions 记录"
+                tvSpeed.text = "APK 已就绪，可直接安装"
                 renderLog(s.log)
                 tvApkName.text = s.apkName ?: "-"
                 tvApkMeta.text = "${Fmt.bytes(s.apkSize)} · 下载通道 ${s.mirror.ifBlank { "直连" }}"
                 lastApk = s.apkPath?.let { File(it) }
-                tvRunLink.text = s.runUrl ?: ""
-                tvRunLink.tag = s.runUrl
+                tvRunLink.visibility = View.GONE
             }
             else -> {
                 cardProgress.visibility = View.VISIBLE
@@ -323,7 +322,7 @@ class MainActivity : AppCompatActivity() {
         val fmt = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
         for (h in items) {
             val v = layoutInflater.inflate(R.layout.item_history, historyContainer, false)
-            v.findViewById<TextView>(R.id.tvHistoryTitle).text = "${h.repo} · ${h.variant}"
+            v.findViewById<TextView>(R.id.tvHistoryTitle).text = "云端构建 · ${h.variant}"
             val status = v.findViewById<TextView>(R.id.tvHistoryStatus)
             status.text = if (h.success) "成功" else "失败"
             status.setTextColor(

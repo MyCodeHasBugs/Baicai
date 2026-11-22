@@ -49,7 +49,6 @@ class BuildOrchestrator(
         val inputTag = "in-$buildId"
         val apkTag = "apk-$buildId"
         BuildState.reset(buildId)
-        BuildState.log("仓库: ${cfg.owner}/${cfg.repo}  分支: ${cfg.branch}")
         BuildState.log("构建: ${cfg.variant}  分片: ${cfg.shardMb}MB  上传并发: ${cfg.uploadConcurrency}  下载线程: ${cfg.downloadThreads}")
 
         var packed: ProjectPacker.Packed? = null
@@ -155,8 +154,7 @@ class BuildOrchestrator(
                 }
                 if (run.status == "completed") {
                     if (run.conclusion != "success") {
-                        BuildState.set { it.copy(runUrl = run.htmlUrl) }
-                        throw IllegalStateException("云端构建失败（${run.conclusion}），日志：${run.htmlUrl}")
+                        throw IllegalStateException("云端构建失败（${run.conclusion}），请重试或联系提供者")
                     }
                     break
                 }
@@ -166,8 +164,7 @@ class BuildOrchestrator(
                 delay(4000)
                 run = client.run(runId)
             }
-            BuildState.set { it.copy(runUrl = run.htmlUrl) }
-            BuildState.log("云端构建成功: ${run.htmlUrl}")
+            BuildState.log("云端构建成功")
 
             // ---------- 5. 下载 APK ----------
             checkCancel()
@@ -207,7 +204,7 @@ class BuildOrchestrator(
                     apkTag = apkTag,
                     apkName = result.file.name,
                     size = result.file.length(),
-                    runUrl = run.htmlUrl,
+                    runUrl = "",
                     success = true
                 )
             )
@@ -228,7 +225,7 @@ class BuildOrchestrator(
                     apkTag = apkTag,
                     apkName = "",
                     size = 0,
-                    runUrl = BuildState.state.value.runUrl.orEmpty(),
+                    runUrl = "",
                     success = false
                 )
             )
