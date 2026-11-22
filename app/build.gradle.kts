@@ -31,12 +31,26 @@ android {
         buildConfigField("String", "DEFAULT_WORKFLOW", "\"cloud-build.yml\"")
     }
 
+    signingConfigs {
+        val storePath = System.getenv("SIGNING_STORE_FILE")
+        if (!storePath.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(storePath)
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
             // 混淆 + 收缩，提高逆向后直接抠字符串的门槛
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (System.getenv("SIGNING_STORE_FILE").isNullOrBlank())
+                signingConfigs.getByName("debug")
+            else signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

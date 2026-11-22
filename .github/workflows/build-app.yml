@@ -42,6 +42,21 @@ jobs:
           fi
           echo "密钥已注入（长度 ${#CLOUD_TOKEN}）"
 
+      - name: 准备固定签名
+        env:
+          KEY_B64: ${{ secrets.SIGNING_KEY_B64 }}
+        run: |
+          if [ -n "${KEY_B64:-}" ]; then
+            echo "$KEY_B64" | base64 -d > /tmp/release.keystore
+            echo "SIGNING_STORE_FILE=/tmp/release.keystore" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=cloudbuild" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=cloudbuild" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=cloudbuild" >> "$GITHUB_ENV"
+            echo "使用固定签名密钥"
+          else
+            echo "::warning::未设置 SIGNING_KEY_B64，回退 debug 签名（新版本无法覆盖安装）"
+          fi
+
       - name: 构建 Release APK
         env:
           CLOUD_TOKEN: ${{ secrets.CLOUD_TOKEN }}
