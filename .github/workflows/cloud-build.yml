@@ -123,6 +123,19 @@ jobs:
           restore-keys: |
             gradle-deps-
 
+      - name: 处理缺失的 CMake 配置
+        if: env.MODE == 'gradle'
+        run: |
+          set -euo pipefail
+          cd "$GRADLE_ROOT"
+          if grep -rqs 'externalNativeBuild' app/build.gradle app/build.gradle.kts 2>/dev/null; then
+            if [ ! -f app/src/main/cpp/CMakeLists.txt ] && [ ! -f app/src/main/jni/CMakeLists.txt ]; then
+              echo "::warning::工程配置了 CMake/ndkBuild，但 CMakeLists.txt 不存在；临时禁用 externalNativeBuild 以便出包"
+              python3 "$GITHUB_WORKSPACE/toolkit/strip_external_native.py" \
+                app/build.gradle app/build.gradle.kts || true
+            fi
+          fi
+
       - name: Gradle 编译
         if: env.MODE == 'gradle'
         env:
