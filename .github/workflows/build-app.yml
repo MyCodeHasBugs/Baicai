@@ -45,7 +45,9 @@ jobs:
       - name: 构建 Release APK
         env:
           CLOUD_TOKEN: ${{ secrets.CLOUD_TOKEN }}
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: 校验产物
         run: |
