@@ -36,7 +36,7 @@ MANIFEST=""
 for cand in "$SRC/AndroidManifest.xml" "$SRC/src/main/AndroidManifest.xml"; do
   [ -f "$cand" ] && MANIFEST="$cand" && break
 done
-[ -n "$MANIFEST" ] || MANIFEST=$(find "$SRC" -maxdepth 4 -name AndroidManifest.xml -type f -not -path '*/build/*' | head -1)
+[ -n "$MANIFEST" ] || MANIFEST=$(find "$SRC" -maxdepth 8 -name AndroidManifest.xml -type f -not -path '*/build/*' | head -1)
 [ -n "$MANIFEST" ] || { echo "工程里没有 AndroidManifest.xml" >&2; exit 1; }
 ROOT=$(dirname "$MANIFEST")
 echo "Manifest: $MANIFEST"

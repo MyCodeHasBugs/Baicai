@@ -52,10 +52,16 @@ jobs:
           unzip -q /tmp/in/project.zip
           echo "---- 顶层内容 ----"
           ls -la | head -40
-          GRADLEW=$(find . -maxdepth 4 -name gradlew -type f | head -1 || true)
+          GRADLEW=$(find . -maxdepth 8 -name gradlew -type f | head -1 || true)
+          MANIFEST=$(find . -maxdepth 8 -name AndroidManifest.xml -type f -not -path '*/build/*' | head -1 || true)
+          echo "gradlew: ${GRADLEW:-未找到}"
+          echo "AndroidManifest: ${MANIFEST:-未找到}"
           if [ -z "$GRADLEW" ]; then
             echo "MODE=bare" >> "$GITHUB_ENV"
             echo "未找到 gradlew，改走裸源码编译（aapt2 + javac + d8 + clang）"
+            if [ -z "$MANIFEST" ]; then
+              echo "::warning::没找到 AndroidManifest.xml，裸源码编译大概率失败"
+            fi
           else
             ROOT=$(dirname "$GRADLEW")
             ABS_ROOT=$(realpath "$ROOT")
