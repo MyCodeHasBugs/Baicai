@@ -32,14 +32,21 @@ JH="${JAVA_HOME:-}"
 JAVAC="$JH/bin/javac"; JAVA="$JH/bin/java"; KEYTOOL="$JH/bin/keytool"
 [ -x "$JAVAC" ] || { echo "找不到 javac（JAVA_HOME=$JH）" >&2; exit 1; }
 
-MANIFEST=$(find "$SRC" -maxdepth 3 -name AndroidManifest.xml -type f | head -1)
+MANIFEST=""
+for cand in "$SRC/AndroidManifest.xml" "$SRC/src/main/AndroidManifest.xml"; do
+  [ -f "$cand" ] && MANIFEST="$cand" && break
+done
+[ -n "$MANIFEST" ] || MANIFEST=$(find "$SRC" -maxdepth 4 -name AndroidManifest.xml -type f -not -path '*/build/*' | head -1)
 [ -n "$MANIFEST" ] || { echo "工程里没有 AndroidManifest.xml" >&2; exit 1; }
 ROOT=$(dirname "$MANIFEST")
 echo "Manifest: $MANIFEST"
 
 RES="$ROOT/res"; [ -d "$RES" ] || RES="$SRC/res"
-JDIR="$ROOT/java"; [ -d "$JDIR" ] || JDIR="$SRC/java"
-[ -d "$JDIR" ] || JDIR="$ROOT"
+JDIR=""
+for cand in "$ROOT/java" "$SRC/src/main/java" "$SRC/java" "$SRC/src"; do
+  [ -d "$cand" ] && JDIR="$cand" && break
+done
+[ -n "$JDIR" ] || JDIR="$ROOT"
 CPP_DIRS=()
 for d in "$ROOT/cpp" "$SRC/cpp" "$SRC/jni" "$ROOT/jni"; do [ -d "$d" ] && CPP_DIRS+=("$d"); done
 
@@ -96,7 +103,7 @@ if [ "${#CPP_DIRS[@]}" -gt 0 ]; then
     CLANG="$TOOLCHAIN/bin/clang"
     SYSROOT="$TOOLCHAIN/sysroot"
     for dir in "${CPP_DIRS[@]}"; do
-      mapfile -t CSRC < <(find "$dir" -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.cc' \) | sort)
+      mapfile -t CSRC < <(find "$dir" -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.cc' \) -not -path '*/build/*' | sort)
       [ "${#CSRC[@]}" -eq 0 ] && continue
       NAME=$(basename "$dir")
       [ "$NAME" = "cpp" ] && NAME="native"
