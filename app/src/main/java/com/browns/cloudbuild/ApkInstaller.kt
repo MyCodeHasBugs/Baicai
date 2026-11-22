@@ -29,7 +29,12 @@ object ApkInstaller {
             }
             return
         }
-        val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", file)
+        val uri = runCatching {
+            FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", file)
+        }.getOrElse {
+            toast(ctx, "无法准备安装：${it.message}")
+            return
+        }
         val intent = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, "application/vnd.android.package-archive")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -42,7 +47,12 @@ object ApkInstaller {
             toast(ctx, "APK 不存在")
             return
         }
-        val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", file)
+        val uri = runCatching {
+            FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", file)
+        }.getOrElse {
+            toast(ctx, "无法导出 APK：${it.message}")
+            return
+        }
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/vnd.android.package-archive"
             putExtra(Intent.EXTRA_STREAM, uri)
