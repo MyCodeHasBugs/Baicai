@@ -193,8 +193,14 @@ class BuildOrchestrator(
                 BuildState.progress(p, done, total, bps, "下载 APK $p%")
             }
 
-            BuildState.done(result.file, run.htmlUrl, result.mirror)
-            BuildState.log("下载完成: ${result.file.absolutePath}  通道: ${result.mirror}")
+            BuildState.done(result.file, "", result.mirror)
+            BuildState.log("下载完成: ${result.file.name}")
+            val publicRef = ApkStore.publishToDownloads(ctx, result.file)
+            if (publicRef != null) {
+                BuildState.log("已另存到 Download/CloudBuild/${result.file.name}")
+            } else {
+                BuildState.log("另存到公共 Download 失败，私有目录里的 APK 仍可安装")
+            }
             App.history.add(
                 HistoryItem(
                     buildId = buildId,
