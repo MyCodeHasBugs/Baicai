@@ -53,21 +53,27 @@ jobs:
           echo "---- 顶层内容 ----"
           ls -la | head -40
           GRADLEW=$(find . -maxdepth 8 -name gradlew -type f | head -1 || true)
+          SETTINGS=$(find . -maxdepth 8 \( -name 'settings.gradle' -o -name 'settings.gradle.kts' \) -type f | head -1 || true)
           MANIFEST=$(find . -maxdepth 8 -name AndroidManifest.xml -type f -not -path '*/build/*' | head -1 || true)
           echo "gradlew: ${GRADLEW:-未找到}"
+          echo "settings: ${SETTINGS:-未找到}"
           echo "AndroidManifest: ${MANIFEST:-未找到}"
-          if [ -z "$GRADLEW" ]; then
+          if [ -n "$GRADLEW" ]; then
+            ROOT=$(dirname "$GRADLEW")
+            echo "MODE=gradle" >> "$GITHUB_ENV"
+            echo "GRADLE_ROOT=$(realpath "$ROOT")" >> "$GITHUB_ENV"
+            echo "使用 gradlew 构建: $(realpath "$ROOT")"
+          elif [ -n "$SETTINGS" ]; then
+            ROOT=$(dirname "$SETTINGS")
+            echo "MODE=gradle" >> "$GITHUB_ENV"
+            echo "GRADLE_ROOT=$(realpath "$ROOT")" >> "$GITHUB_ENV"
+            echo "没有 gradlew，但有 settings.gradle，使用云端 Gradle 构建: $(realpath "$ROOT")"
+          else
             echo "MODE=bare" >> "$GITHUB_ENV"
-            echo "未找到 gradlew，改走裸源码编译（aapt2 + javac + d8 + clang）"
+            echo "没有 Gradle 工程，改走裸源码编译（aapt2 + javac + d8 + clang）"
             if [ -z "$MANIFEST" ]; then
               echo "::warning::没找到 AndroidManifest.xml，裸源码编译大概率失败"
             fi
-          else
-            ROOT=$(dirname "$GRADLEW")
-            ABS_ROOT=$(realpath "$ROOT")
-            echo "GRADLE_ROOT=$ABS_ROOT" >> "$GITHUB_ENV"
-            echo "MODE=gradle" >> "$GITHUB_ENV"
-            echo "找到 Gradle 根: $ABS_ROOT"
           fi
 
       - name: 安装 JDK 17
@@ -97,14 +103,33 @@ jobs:
         run: |
           set -euo pipefail
           cd "$GRADLE_ROOT"
-          chmod +x gradlew
           if [ "$VARIANT" = "release" ]; then
             TASK=assembleRelease
           else
             TASK=assembleDebug
           fi
-          echo "执行 ./gradlew $TASK"
-          ./gradlew "$TASK" --stacktrace --no-daemon
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            echo "执行 ./gradlew $TASK"
+            ./gradlew "$TASK" --stacktrace --no-daemon
+          else
+            # 工程没带 gradlew：按 gradle-wrapper.properties 下载对应版本
+            PROP=gradle/wrapper/gradle-wrapper.properties
+            if [ -f "$PROP" ]; then
+              URL=$(sed -n 's/^distributionUrl=//p' "$PROP" | sed 's/\\:/:/g')
+              echo "下载工程指定的 Gradle: $URL"
+              mkdir -p /opt/gradle-dist
+              curl -fsSL "$URL" -o /tmp/gradle.zip
+              unzip -q /tmp/gradle.zip -d /opt/gradle-dist
+              GBIN=$(find /opt/gradle-dist -type f -name gradle | head -1)
+            else
+              GBIN=$(command -v gradle || true)
+            fi
+            [ -n "$GBIN" ] || { echo "::error::找不到 Gradle，无法构建"; exit 1; }
+            chmod +x "$GBIN"
+            echo "执行 $GBIN $TASK"
+            "$GBIN" "$TASK" --stacktrace --no-daemon
+          fi
 
       - name: 裸源码编译（无 Gradle）
         if: env.MODE == 'bare'
