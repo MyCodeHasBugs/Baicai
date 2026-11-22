@@ -29,6 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
+      - name: 检出构建脚本
+        uses: actions/checkout@v4
+
       - name: 下载工程分片
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,14 +54,15 @@ jobs:
           ls -la | head -40
           GRADLEW=$(find . -maxdepth 4 -name gradlew -type f | head -1 || true)
           if [ -z "$GRADLEW" ]; then
-            echo "::error::上传的工程里找不到 gradlew（需要标准 Gradle 工程根目录）"
-            find . -maxdepth 3 -type f | head -50
-            exit 1
+            echo "MODE=bare" >> "$GITHUB_ENV"
+            echo "未找到 gradlew，改走裸源码编译（aapt2 + javac + d8 + clang）"
+          else
+            ROOT=$(dirname "$GRADLEW")
+            ABS_ROOT=$(realpath "$ROOT")
+            echo "GRADLE_ROOT=$ABS_ROOT" >> "$GITHUB_ENV"
+            echo "MODE=gradle" >> "$GITHUB_ENV"
+            echo "找到 Gradle 根: $ABS_ROOT"
           fi
-          ROOT=$(dirname "$GRADLEW")
-          ABS_ROOT=$(realpath "$ROOT")
-          echo "GRADLE_ROOT=$ABS_ROOT" >> "$GITHUB_ENV"
-          echo "找到 Gradle 根: $ABS_ROOT"
 
       - name: 安装 JDK 17
         uses: actions/setup-java@v4
@@ -81,6 +85,7 @@ jobs:
           echo "SDK: $SDK"
 
       - name: Gradle 编译
+        if: env.MODE == 'gradle'
         env:
           VARIANT: ${{ inputs.variant }}
         run: |
@@ -95,17 +100,28 @@ jobs:
           echo "执行 ./gradlew $TASK"
           ./gradlew "$TASK" --stacktrace --no-daemon
 
+      - name: 裸源码编译（无 Gradle）
+        if: env.MODE == 'bare'
+        run: |
+          set -euo pipefail
+          chmod +x "$GITHUB_WORKSPACE/toolkit/build-bare.sh"
+          bash "$GITHUB_WORKSPACE/toolkit/build-bare.sh" /tmp/src /tmp/out
+
       - name: 收集 APK
         run: |
           set -euo pipefail
-          cd "$GRADLE_ROOT"
-          APK=$(find . -path '*/build/outputs/apk/*/*.apk' -type f | head -1 || true)
-          if [ -z "$APK" ]; then
+          mkdir -p /tmp/out
+          if [ "$MODE" = "bare" ]; then
+            APK=/tmp/out/app-bare.apk
+          else
+            cd "$GRADLE_ROOT"
+            APK=$(find . -path '*/build/outputs/apk/*/*.apk' -type f | head -1 || true)
+          fi
+          if [ -z "${APK:-}" ]; then
             echo "::error::没有找到 APK 产物"
-            find . -name '*.apk' | head -20
+            find /tmp -name '*.apk' | head -20
             exit 1
           fi
-          mkdir -p /tmp/out
           # 未签名的 release 包装不上，这里用一次性 debug keystore 补签，保证产物可安装
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -1)
           APKSIGNER="$BT/apksigner"
