@@ -149,8 +149,7 @@ jobs:
             TASK=assembleDebug
           fi
           # 多模块工程只编 :app，避免 benchmark/sample 模块拖累
-          if grep -qE "include[^
-]*['\"]:app['\"]" settings.gradle settings.gradle.kts 2>/dev/null; then
+          if grep -qE "include.*['\"]:app['\"]" settings.gradle settings.gradle.kts 2>/dev/null; then
             TASK=":app:$TASK"
             echo "检测到 app 模块，只构建 $TASK"
           fi
