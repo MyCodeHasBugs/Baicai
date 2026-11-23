@@ -60,6 +60,9 @@ if ! grep -qE '<manifest[^>]*[[:space:]]package=' "$MANIFEST"; then
     || { [ -n "$PKG" ] || PKG="com.example.app"; echo "补 package 失败，使用 $PKG"; }
 fi
 
+# 清掉指向不存在资源的引用（icon/theme/label），避免 aapt2 resource not found
+python3 "$(dirname "$0")/sanitize_manifest.py" "$MANIFEST" "$RES" || true
+
 CPP_DIRS=()
 for d in "$ROOT/cpp" "$SRC/cpp" "$SRC/jni" "$ROOT/jni"; do [ -d "$d" ] && CPP_DIRS+=("$d"); done
 
