@@ -95,10 +95,18 @@ jobs:
             DEPS_KEY=$(find "$(realpath "$ROOT")" -maxdepth 3 \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' \) -type f -exec sha1sum {} \; | sort | sha1sum | cut -d' ' -f1)
             echo "DEPS_KEY=$DEPS_KEY" >> "$GITHUB_ENV"
           else
-            echo "MODE=bare" >> "$GITHUB_ENV"
-            echo "没有 Gradle 工程，改走裸源码编译（aapt2 + javac + d8 + clang）"
-            if [ -z "$MANIFEST" ]; then
-              echo "::warning::没找到 AndroidManifest.xml，裸源码编译大概率失败"
+            if python3 "$GITHUB_WORKSPACE/toolkit/wrap_gradle.py" "$(pwd)"; then
+              echo "MODE=gradle" >> "$GITHUB_ENV"
+              echo "GRADLE_ROOT=$(pwd)" >> "$GITHUB_ENV"
+              DIST_PROP="$(pwd)/gradle/wrapper/gradle-wrapper.properties"
+              [ -f "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+              echo "检测到 Kotlin/AppCompat 源码，已自动包装成 Gradle 工程"
+            else
+              echo "MODE=bare" >> "$GITHUB_ENV"
+              echo "没有 Gradle 工程，改走裸源码编译（aapt2 + javac + d8 + clang）"
+              if [ -z "$MANIFEST" ]; then
+                echo "::warning::没找到 AndroidManifest.xml，裸源码编译大概率失败"
+              fi
             fi
           fi
 
@@ -169,6 +177,12 @@ jobs:
           set -euo pipefail
           cd "$GRADLE_ROOT"
           python3 "$GITHUB_WORKSPACE/toolkit/ensure_app_name.py" "$GRADLE_ROOT" || true
+          MAN=""
+          [ -f app/src/main/AndroidManifest.xml ] && MAN="app/src/main/AndroidManifest.xml"
+          if [ -z "$MAN" ] && [ -f src/main/AndroidManifest.xml ]; then MAN="src/main/AndroidManifest.xml"; fi
+          if [ -n "$MAN" ]; then
+            python3 "$GITHUB_WORKSPACE/toolkit/sanitize_manifest.py" "$MAN" "$(dirname "$MAN")/res" || true
+          fi
 
       - name: Gradle 编译
         if: env.MODE == 'gradle'
