@@ -20,7 +20,7 @@ def find_package(java_dir):
                     s = fh.read()
             except OSError:
                 continue
-            m = re.search(r"^\s*package\s+([A-Za-z_][\w.]*)\s*;", s, re.M)
+            m = re.search(r"^\s*package\s+([A-Za-z_][\w.]*)", s, re.M)
             if m:
                 return m.group(1)
     return ""
