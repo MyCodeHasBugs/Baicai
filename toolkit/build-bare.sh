@@ -47,6 +47,20 @@ for cand in "$ROOT/java" "$SRC/src/main/java" "$SRC/java" "$SRC/src"; do
   [ -d "$cand" ] && JDIR="$cand" && break
 done
 [ -n "$JDIR" ] || JDIR="$ROOT"
+
+# 现代 manifest 常常不写 package（包名在 Gradle 的 namespace 里）。
+# 裸源码模式必须补一个，否则 aapt2 报 "must have a 'package' attribute"。
+PKG=""
+if [ -d "$JDIR" ]; then
+  PKG=$(grep -Rh --include='*.java' -E '^[[:space:]]*package[[:space:]]+' "$JDIR" 2>/dev/null \
+    | head -1 | sed -E 's/^[[:space:]]*package[[:space:]]+//; s/;.*//' | tr -d '[:space:]')
+fi
+[ -n "$PKG" ] || PKG="com.example.app"
+if ! grep -qE '<manifest[^>]*[[:space:]]package=' "$MANIFEST"; then
+  sed -i "0,/<manifest/s//<manifest package=\"$PKG\"/" "$MANIFEST"
+  echo "已补 manifest package: $PKG"
+fi
+
 CPP_DIRS=()
 for d in "$ROOT/cpp" "$SRC/cpp" "$SRC/jni" "$ROOT/jni"; do [ -d "$d" ] && CPP_DIRS+=("$d"); done
 
