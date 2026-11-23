@@ -55,10 +55,9 @@ if [ -d "$JDIR" ]; then
   PKG=$(grep -Rh --include='*.java' -E '^[[:space:]]*package[[:space:]]+' "$JDIR" 2>/dev/null \
     | head -1 | sed -E 's/^[[:space:]]*package[[:space:]]+//; s/;.*//' | tr -d '[:space:]')
 fi
-[ -n "$PKG" ] || PKG="com.example.app"
 if ! grep -qE '<manifest[^>]*[[:space:]]package=' "$MANIFEST"; then
-  sed -i "0,/<manifest/s//<manifest package=\"$PKG\"/" "$MANIFEST"
-  echo "已补 manifest package: $PKG"
+  python3 "$(dirname "$0")/ensure_manifest_package.py" "$MANIFEST" "$JDIR" \
+    || { [ -n "$PKG" ] || PKG="com.example.app"; echo "补 package 失败，使用 $PKG"; }
 fi
 
 CPP_DIRS=()
