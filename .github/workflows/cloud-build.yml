@@ -251,7 +251,7 @@ jobs:
             else
               echo "使用缓存的 Gradle: $GBIN"
             fi
-[ -n "$GBIN" ] || { echo "::error::找不到 Gradle，无法构建"; exit 1; }
+            [ -n "$GBIN" ] || { echo "::error::找不到 Gradle，无法构建"; exit 1; }
             chmod +x "$GBIN" 2>/dev/null || true
             echo "执行 $GBIN $TASK"
             "$GBIN" "$TASK" --stacktrace --no-daemon
