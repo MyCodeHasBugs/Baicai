@@ -246,7 +246,7 @@ jobs:
           if [ -f gradlew ]; then
             chmod +x gradlew
             echo "执行 ./gradlew $TASK"
-            ./gradlew "$TASK" --stacktrace --no-daemon
+            ./gradlew "$TASK" --stacktrace --no-daemon 2>&1 | tee /tmp/build.log
           else
             # 工程没带 gradlew：优先用缓存，没有再按 gradle-wrapper.properties 下载
             GBIN=$(find /home/runner/gradle-dist -type f -name gradle 2>/dev/null | head -1 || true)
@@ -268,7 +268,7 @@ jobs:
             [ -n "$GBIN" ] || { echo "::error::找不到 Gradle，无法构建"; exit 1; }
             chmod +x "$GBIN" 2>/dev/null || true
             echo "执行 $GBIN $TASK"
-            "$GBIN" "$TASK" --stacktrace --no-daemon
+            "$GBIN" "$TASK" --stacktrace --no-daemon 2>&1 | tee /tmp/build.log
           fi
 
       - name: 裸源码编译（无 Gradle）
@@ -276,7 +276,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x "$GITHUB_WORKSPACE/toolkit/build-bare.sh"
-          bash "$GITHUB_WORKSPACE/toolkit/build-bare.sh" /tmp/src /tmp/out
+          bash "$GITHUB_WORKSPACE/toolkit/build-bare.sh" /tmp/src /tmp/out 2>&1 | tee /tmp/build.log
 
       - name: 收集 APK
         run: |
@@ -336,6 +336,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: 回传编译错误
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ERR_TAG: err-${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/build.log ]; then
+            tail -n 100 /tmp/build.log \
+              | sed -E 's#/tmp/src/##g; s#https://github.com/[^ ]+##g' \
+              > /tmp/error.txt
+            gh release create "$ERR_TAG" --title "编译错误" --notes-file /tmp/error.txt \
+              --repo "$GITHUB_REPOSITORY" \
+              || gh release edit "$ERR_TAG" --notes-file /tmp/error.txt \
+                   --repo "$GITHUB_REPOSITORY" || true
+          fi
       - name: 清理输入 release
         if: always()
         env:
