@@ -154,7 +154,15 @@ class BuildOrchestrator(
                 }
                 if (run.status == "completed") {
                     if (run.conclusion != "success") {
-                        throw IllegalStateException("云端构建失败（${run.conclusion}），请重试或联系提供者")
+                        // 失败时拉取 workflow 回传的错误摘要
+                        var detail: String? = null
+                        repeat(4) {
+                            detail = runCatching { client.releaseBody("err-$inputTag") }.getOrNull()
+                            if (detail.isNullOrBlank()) delay(2000)
+                        }
+                        val msg = detail?.trim()?.takeLast(1500)
+                            ?: "云端构建失败（${run.conclusion}），请检查工程结构或稍后重试"
+                        throw IllegalStateException(msg)
                     }
                     break
                 }
