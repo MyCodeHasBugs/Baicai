@@ -207,6 +207,7 @@ def main() -> int:
     changed = False
     build_files = find_build_files(root)
 
+    changed |= rename_kotlin_sources(root)
     fix_gradlew(root)
     changed |= ensure_settings(root, build_files)
     build_files = find_build_files(root)
