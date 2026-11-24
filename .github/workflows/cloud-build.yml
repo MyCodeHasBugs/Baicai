@@ -139,6 +139,20 @@ jobs:
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
           echo "SDK: $SDK"
 
+      - name: 安装 compileSdk
+        if: env.MODE == 'gradle'
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/compile_sdk.txt ]; then
+            CS=$(cat /tmp/compile_sdk.txt)
+            if [ ! -d "$ANDROID_HOME/platforms/android-$CS" ]; then
+              SDKMGR=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager | head -1 || true)
+              if [ -n "$SDKMGR" ]; then
+                yes | "$SDKMGR" "platforms;android-$CS" >/dev/null 2>&1 || true
+                echo "installed platform android-$CS"
+              fi
+            fi
+          fi
       - name: 缓存 Gradle 发行版
         if: env.MODE == 'gradle' && env.DIST_KEY != ''
         uses: actions/cache@v4
