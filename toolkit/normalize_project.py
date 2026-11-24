@@ -59,25 +59,24 @@ def ensure_settings(root, build_files):
     if "com.android.application" not in root_build and "com.android.library" not in root_build:
         return False
     name = "settings.gradle.kts" if kotlin else "settings.gradle"
-    write(
-        os.path.join(root, name),
-        """pluginManagement {
-    repositories {
+    jit = 'maven { url = uri("https://jitpack.io") }' if kotlin else "maven { url 'https://jitpack.io' }"
+    content = f"""pluginManagement {{
+    repositories {{
         google()
         mavenCentral()
         gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositories {
+    }}
+}}
+dependencyResolutionManagement {{
+    repositories {{
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
-    }
-}
+        {jit}
+    }}
+}}
 rootProject.name = "autowrap"
-""",
-    )
+"""
+    write(os.path.join(root, name), content)
     print("generated", name)
     return True
 
@@ -92,12 +91,9 @@ def fix_repositories(root, build_files):
         if "jcenter()" in new:
             new = new.replace("jcenter()", "mavenCentral()")
         if "repositories" in new and "google()" not in new:
-            new = re.sub(
-                r"(repositories\s*\{)",
-                r"\1\n        google()\n        mavenCentral()\n        maven { url = uri(\"https://jitpack.io\") }",
-                new,
-                count=1,
-            )
+            jit = 'maven { url = uri("https://jitpack.io") }' if p.endswith(".kts") else "maven { url 'https://jitpack.io' }"
+            inserted = "\\1\n        google()\n        mavenCentral()\n        " + jit
+            new = re.sub(r"(repositories\s*\{)", inserted, new, count=1)
         if new != s:
             write(p, new)
             changed = True
