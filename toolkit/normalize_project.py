@@ -77,6 +77,16 @@ dependencyResolutionManagement {{
 rootProject.name = "autowrap"
 """
     write(os.path.join(root, name), content)
+    wrap = os.path.join(root, "gradle", "wrapper", "gradle-wrapper.properties")
+    if not os.path.isfile(wrap):
+        write(
+            wrap,
+            "distributionBase=GRADLE_USER_HOME\n"
+            "distributionPath=wrapper/dists\n"
+            "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-bin.zip\n"
+            "zipStoreBase=GRADLE_USER_HOME\n"
+            "zipStorePath=wrapper/dists\n",
+        )
     print("generated", name)
     return True
 
