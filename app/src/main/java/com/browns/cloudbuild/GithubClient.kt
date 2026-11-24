@@ -127,6 +127,16 @@ class GithubClient(
         }
     }
 
+    /** 读取 Release 的说明（用于失败时回传编译错误）。 */
+    suspend fun releaseBody(tag: String): String? {
+        return try {
+            val resp = executeJson(request("$api/repos/$owner/$repo/releases/tags/${enc(tag)}"))
+            resp.optString("body").ifBlank { null }
+        } catch (e: ApiException) {
+            if (e.code == 404) null else throw e
+        }
+    }
+
     suspend fun deleteRelease(id: Long) {
         runCatching { executeJson(request("$api/repos/$owner/$repo/releases/$id", "DELETE")) }
     }
