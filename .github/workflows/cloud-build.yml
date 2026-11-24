@@ -182,7 +182,22 @@ jobs:
           if [ -z "$MAN" ] && [ -f src/main/AndroidManifest.xml ]; then MAN="src/main/AndroidManifest.xml"; fi
           if [ -n "$MAN" ]; then
             python3 "$GITHUB_WORKSPACE/toolkit/sanitize_manifest.py" "$MAN" "$(dirname "$MAN")/res" || true
+            python3 "$GITHUB_WORKSPACE/toolkit/ensure_android_res.py" "$(dirname "$MAN")" || true
           fi
+
+      - name: 补全 Gradle 配置
+        if: env.MODE == 'gradle'
+        run: |
+          set -euo pipefail
+          cd "$GRADLE_ROOT"
+          if [ ! -f local.properties ]; then
+            echo "sdk.dir=$ANDROID_HOME" > local.properties
+          fi
+          touch gradle.properties
+          grep -q '^android.useAndroidX=' gradle.properties || echo 'android.useAndroidX=true' >> gradle.properties
+          grep -q '^org.gradle.jvmargs=' gradle.properties || echo 'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8' >> gradle.properties
+          grep -q '^org.gradle.parallel=' gradle.properties || echo 'org.gradle.parallel=true' >> gradle.properties
+          grep -q '^org.gradle.caching=' gradle.properties || echo 'org.gradle.caching=true' >> gradle.properties
 
       - name: Gradle 编译
         if: env.MODE == 'gradle'
