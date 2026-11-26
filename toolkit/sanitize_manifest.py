@@ -74,7 +74,8 @@ def main() -> int:
 
     s = replace_ref(s, "icon", "mipmap", None)
     s = replace_ref(s, "roundIcon", "mipmap", None)
-    s = replace_ref(s, "theme", "style", "@android:style/Theme.Material.Light")
+    if "--keep-theme" not in sys.argv:
+        s = replace_ref(s, "theme", "style", "@android:style/Theme.Material.Light")
     s = replace_ref(s, "label", "string", "App")
 
     write(manifest, s)
