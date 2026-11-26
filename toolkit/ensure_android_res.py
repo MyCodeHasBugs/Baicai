@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """扫描源码里的 R.type.name 引用，缺失的资源自动生成占位文件。
 
-用途：有些纯源码包漏带了 res/，Kotlin/Java 里又有 R.layout.xxx、R.id.xxx，
-不补的话 Kotlin/Javac 会报 Unresolved reference。
-
-用法: ensure_android_res.py <src/main 目录>
+缺 res 时 Kotlin/Java 会报 Unresolved reference；这里补齐。
+对 layout，会按 findViewById<Type>(R.id.xxx) 生成带 id 的控件，避免运行时空指针。
 """
 import os
 import re
@@ -13,6 +11,21 @@ import sys
 KNOWN = {
     "layout", "id", "string", "drawable", "mipmap", "color",
     "style", "dimen", "integer", "bool", "array",
+}
+
+VIEW_TAGS = {
+    "Button": "Button",
+    "TextView": "TextView",
+    "EditText": "EditText",
+    "ImageView": "ImageView",
+    "CheckBox": "CheckBox",
+    "RadioButton": "RadioButton",
+    "Switch": "Switch",
+    "ProgressBar": "ProgressBar",
+    "LinearLayout": "LinearLayout",
+    "FrameLayout": "FrameLayout",
+    "ScrollView": "ScrollView",
+    "View": "View",
 }
 
 
@@ -25,21 +38,16 @@ def read(path):
 
 
 def write(path, s):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(s)
 
 
 def has_resource(res, rtype, name):
     if rtype in ("id", "string", "color", "style", "dimen", "integer", "bool", "array"):
-        for base, _, files in os.walk(os.path.join(res, "values")) if os.path.isdir(os.path.join(res, "values")) else []:
-            for f in files:
-                if f.endswith(".xml") and re.search(
-                    r'<[^>]+\bname\s*=\s*["\']' + re.escape(name) + r'["\']',
-                    read(os.path.join(base, f)),
-                ):
-                    return True
-        for base, dirs, files in os.walk(res):
+        for base, _, files in os.walk(res):
             folder = os.path.basename(base)
             if folder == "values" or folder.startswith("values-"):
                 for f in files:
@@ -80,6 +88,7 @@ def main() -> int:
     res = os.path.join(src_main, "res")
 
     refs = set()
+    id_types = {}
     for base, _, files in os.walk(src_main):
         for f in files:
             if not f.endswith((".kt", ".java")):
@@ -88,6 +97,21 @@ def main() -> int:
             for m in re.finditer(r"\bR\.([A-Za-z_]\w*)\.([A-Za-z_]\w*)", s):
                 if m.group(1) in KNOWN:
                     refs.add((m.group(1), m.group(2)))
+            for m in re.finditer(
+                r"findViewById\s*<\s*([\w.]+)\s*>\s*\(\s*R\.id\.(\w+)", s
+            ):
+                id_types[m.group(2)] = m.group(1).split(".")[-1]
+            for m in re.finditer(r"findViewById\s*\(\s*R\.id\.(\w+)", s):
+                id_types.setdefault(m.group(1), "View")
+
+    controls = ""
+    for name, typ in id_types.items():
+        tag = VIEW_TAGS.get(typ, "View")
+        controls += (
+            f'    <{tag} android:id="@+id/{name}"\n'
+            '        android:layout_width="wrap_content"\n'
+            '        android:layout_height="wrap_content" />\n'
+        )
 
     created = []
     for rtype, name in sorted(refs):
@@ -100,7 +124,9 @@ def main() -> int:
                 '<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"\n'
                 '    android:layout_width="match_parent"\n'
                 '    android:layout_height="match_parent"\n'
-                '    android:orientation="vertical" />\n',
+                '    android:orientation="vertical">\n'
+                + controls
+                + '</LinearLayout>\n',
             )
         elif rtype == "id":
             append_value(res, "ids.xml", "item", name, "", ' type="id"')
