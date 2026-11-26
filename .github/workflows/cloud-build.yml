@@ -196,7 +196,7 @@ jobs:
           [ -f app/src/main/AndroidManifest.xml ] && MAN="app/src/main/AndroidManifest.xml"
           if [ -z "$MAN" ] && [ -f src/main/AndroidManifest.xml ]; then MAN="src/main/AndroidManifest.xml"; fi
           if [ -n "$MAN" ]; then
-            python3 "$GITHUB_WORKSPACE/toolkit/sanitize_manifest.py" "$MAN" "$(dirname "$MAN")/res" || true
+            python3 "$GITHUB_WORKSPACE/toolkit/sanitize_manifest.py" "$MAN" "$(dirname "$MAN")/res" --keep-theme || true
             python3 "$GITHUB_WORKSPACE/toolkit/ensure_android_res.py" "$(dirname "$MAN")" || true
           fi
 
