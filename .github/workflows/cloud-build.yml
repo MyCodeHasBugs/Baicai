@@ -65,7 +65,7 @@ jobs:
             echo "GRADLE_ROOT=$(realpath "$ROOT")" >> "$GITHUB_ENV"
             echo "使用 gradlew 构建: $(realpath "$ROOT")"
             DIST_PROP=$(find "$(realpath "$ROOT")" -maxdepth 4 -name gradle-wrapper.properties -type f | head -1 || true)
-            [ -n "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+            if [ -n "$DIST_PROP" ]; then echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"; fi
             GRADLE_VER=""
             if [ -n "$DIST_PROP" ]; then
               GURL=$(sed -n 's/^distributionUrl=//p' "$DIST_PROP" | sed 's/\\:/:/g')
@@ -77,13 +77,13 @@ jobs:
             fi
             DEPS_KEY=$(find "$(realpath "$ROOT")" -maxdepth 3 \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' \) -type f -exec sha1sum {} \; | sort | sha1sum | cut -d' ' -f1)
             echo "DEPS_KEY=$DEPS_KEY" >> "$GITHUB_ENV"
-          elif [ -n "$SETTINGS" ]; then
+          elif [ -n "$SETTINGS" ] && [ -n "$(find "$(dirname "$SETTINGS")" -maxdepth 2 \( -name build.gradle -o -name build.gradle.kts \) -type f | head -1)" ]; then
             ROOT=$(dirname "$SETTINGS")
             echo "MODE=gradle" >> "$GITHUB_ENV"
             echo "GRADLE_ROOT=$(realpath "$ROOT")" >> "$GITHUB_ENV"
             echo "没有 gradlew，但有 settings.gradle，使用云端 Gradle 构建: $(realpath "$ROOT")"
             DIST_PROP=$(find "$(realpath "$ROOT")" -maxdepth 4 -name gradle-wrapper.properties -type f | head -1 || true)
-            [ -n "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+            if [ -n "$DIST_PROP" ]; then echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"; fi
             GRADLE_VER=""
             if [ -n "$DIST_PROP" ]; then
               GURL=$(sed -n 's/^distributionUrl=//p' "$DIST_PROP" | sed 's/\\:/:/g')
@@ -100,7 +100,7 @@ jobs:
               echo "MODE=gradle" >> "$GITHUB_ENV"
               echo "GRADLE_ROOT=$(pwd)" >> "$GITHUB_ENV"
               DIST_PROP="$(pwd)/gradle/wrapper/gradle-wrapper.properties"
-              [ -f "$DIST_PROP" ] && echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+              if [ -f "$DIST_PROP" ]; then echo "DIST_KEY=$(sha1sum "$DIST_PROP" | cut -d' ' -f1)" >> "$GITHUB_ENV"; fi
               echo "检测到 Kotlin/AppCompat 源码，已自动包装成 Gradle 工程"
             else
               echo "MODE=bare" >> "$GITHUB_ENV"
