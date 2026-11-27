@@ -219,6 +219,28 @@ def rename_kotlin_sources(root):
                 changed = True
     return changed
 
+def strip_uses_sdk(root):
+    """AGP 8 不支持 manifest 里的 uses-sdk，统一移除（版本由 build.gradle 决定）。"""
+    import re
+    changed = False
+    for base, _, files in os.walk(root):
+        if os.sep + "build" + os.sep in base + os.sep:
+            continue
+        for f in files:
+            if f != "AndroidManifest.xml":
+                continue
+            fp = os.path.join(base, f)
+            txt = read(fp)
+            if not txt:
+                continue
+            new = re.sub(r"\s*<uses-sdk\b[^>]*/>", "", txt)
+            if new != txt:
+                write(fp, new)
+                print("stripped uses-sdk", fp)
+                changed = True
+    return changed
+
+
 def main() -> int:
     root = sys.argv[1] if len(sys.argv) > 1 else "."
     changed = False
@@ -230,6 +252,7 @@ def main() -> int:
     build_files = find_build_files(root)
     changed |= fix_repositories(root, build_files)
     changed |= ensure_manifest_package(root, build_files)
+    changed |= strip_uses_sdk(root)
 
     sdk = find_compile_sdk(build_files)
     if sdk:
