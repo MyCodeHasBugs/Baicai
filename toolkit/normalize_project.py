@@ -197,17 +197,25 @@ def kotlin_like(s):
 
 
 def rename_kotlin_sources(root):
+    """把 Kotlin 源码统一放到 src/main/kotlin，确保 Kotlin 插件一定编译到。"""
     changed = False
-    for base, _, files in os.walk(root):
-        if os.sep + "build" + os.sep in base + os.sep:
+    for java_dir in (os.path.join(root, "src", "main", "java"),
+                     os.path.join(root, "app", "src", "main", "java")):
+        if not os.path.isdir(java_dir):
             continue
-        for f in files:
-            if not f.endswith(".java"):
-                continue
-            p = os.path.join(base, f)
-            if kotlin_like(read(p)):
-                os.replace(p, p[:-5] + ".kt")
-                print("renamed kotlin source", p)
+        kotlin_dir = os.path.join(os.path.dirname(java_dir), "kotlin")
+        for base, _, files in os.walk(java_dir):
+            for f in files:
+                p = os.path.join(base, f)
+                is_kt = f.endswith(".kt")
+                is_kotlin_java = f.endswith(".java") and kotlin_like(read(p))
+                if not (is_kt or is_kotlin_java):
+                    continue
+                rel = os.path.relpath(p, java_dir)
+                dst = os.path.join(kotlin_dir, os.path.splitext(rel)[0] + ".kt")
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                os.replace(p, dst)
+                print("moved kotlin source", p, "->", dst)
                 changed = True
     return changed
 
