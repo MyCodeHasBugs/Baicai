@@ -44,6 +44,20 @@ def find_src_main(root):
     return None
 
 
+def ensure_src_main_layout(root, src_main):
+    """老式裸工程常把 AndroidManifest.xml / res 放在根目录，搬进 src/main。"""
+    man = os.path.join(root, "AndroidManifest.xml")
+    dst_man = os.path.join(src_main, "AndroidManifest.xml")
+    if os.path.isfile(man) and not os.path.isfile(dst_man):
+        os.replace(man, dst_man)
+        print("moved AndroidManifest.xml ->", dst_man)
+    res = os.path.join(root, "res")
+    dst_res = os.path.join(src_main, "res")
+    if os.path.isdir(res) and not os.path.isdir(dst_res):
+        os.replace(res, dst_res)
+        print("moved res ->", dst_res)
+
+
 def find_package(root, src_main):
     manifest = os.path.join(src_main, "AndroidManifest.xml")
     m = re.search(r'package\s*=\s*["\']([\w.]+)["\']', read(manifest))
@@ -63,6 +77,7 @@ def main() -> int:
     src_main = find_src_main(root)
     if not src_main:
         return 1
+    ensure_src_main_layout(root, src_main)
 
     has_kotlin = False
     for base, _, files in os.walk(src_main):
