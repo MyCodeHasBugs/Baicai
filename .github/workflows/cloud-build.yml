@@ -45,8 +45,14 @@ jobs:
           echo "分片数: $(ls /tmp/in/project.zip.part* | wc -l)"
 
       - name: 解压工程
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          set -x
+          exec > >(tee /tmp/dbg.log) 2>&1
+          trap 'gh release create "err-$TAG" --title "解压失败" --notes "$(tail -c 4000 /tmp/dbg.log)" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true' ERR
           mkdir -p /tmp/src
           cd /tmp/src
           unzip -q /tmp/in/project.zip
