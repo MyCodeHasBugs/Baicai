@@ -362,7 +362,9 @@ jobs:
           set -euo pipefail
           if [ -f /tmp/build.log ]; then
             {
-              grep -E 'e: file|error:|FAILURE|What went wrong|Unresolved|Could not|> Task .*FAILED|Caused by|No such|not found' /tmp/build.log | head -60 || true
+              grep -E 'e: file|error:|FAILURE|What went wrong|Unresolved|Could not|> Task .*FAILED|Caused by|No such|not found|Manifest merger|uses-sdk|android:' /tmp/build.log | head -60 || true
+              echo '---- what went wrong ----'
+              sed -n '/What went wrong/,+30p' /tmp/build.log || true
               echo '---- tail ----'
               tail -n 15 /tmp/build.log
             } | sed -E 's#/tmp/src/##g; s#https://github.com/[^ ]+##g' > /tmp/error.txt
