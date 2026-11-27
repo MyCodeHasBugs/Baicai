@@ -55,7 +55,13 @@ jobs:
           trap 'echo "EXIT=$?" >> /tmp/dbg.log; sync; gh release create "err-$TAG" --title "解压失败" --notes "$(tail -c 7000 /tmp/dbg.log)" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true' ERR
           mkdir -p /tmp/src
           cd /tmp/src
-          unzip -q /tmp/in/project.zip
+          if ! unzip -q -o /tmp/in/project.zip; then
+            echo "unzip 失败，改用 python 解压"
+            python3 - <<'PY'
+import zipfile
+zipfile.ZipFile('/tmp/in/project.zip').extractall('/tmp/src')
+PY
+          fi
           for _ in 1 2 3; do
             if [ "$(ls -A | wc -l)" = "1" ] && [ -d "$(ls -A | head -1)" ]; then
               cd "$(ls -A | head -1)"
