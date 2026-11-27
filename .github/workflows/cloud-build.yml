@@ -50,6 +50,14 @@ jobs:
           mkdir -p /tmp/src
           cd /tmp/src
           unzip -q /tmp/in/project.zip
+          for _ in 1 2 3; do
+            if [ "$(ls -A | wc -l)" = "1" ] && [ -d "$(ls -A | head -1)" ]; then
+              cd "$(ls -A | head -1)"
+            else
+              break
+            fi
+          done
+          echo "PROJECT_ROOT=$(pwd)"
           echo "---- 顶层内容 ----"
           ls -la | head -40
           python3 "$GITHUB_WORKSPACE/toolkit/normalize_project.py" "$(pwd)" || true
