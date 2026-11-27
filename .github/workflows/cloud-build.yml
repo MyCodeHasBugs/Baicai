@@ -51,8 +51,8 @@ jobs:
         run: |
           set -euo pipefail
           set -x
-          exec > >(tee /tmp/dbg.log) 2>&1
-          trap 'gh release create "err-$TAG" --title "解压失败" --notes "$(tail -c 4000 /tmp/dbg.log)" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true' ERR
+          exec > /tmp/dbg.log 2>&1
+          trap 'echo "EXIT=$?" >> /tmp/dbg.log; sync; gh release create "err-$TAG" --title "解压失败" --notes "$(tail -c 7000 /tmp/dbg.log)" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true' ERR
           mkdir -p /tmp/src
           cd /tmp/src
           unzip -q /tmp/in/project.zip
